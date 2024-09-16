@@ -1,0 +1,8 @@
+chromadb==0.5.3
+tiktoken==0.7.0
+python-dotenv==1.0.1
+openai==1.42.0
+requests==2.32.3
+logging
+instaloader==4.13.1
+pydub==0.25.1

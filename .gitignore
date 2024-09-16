@@ -1,0 +1,9 @@
+reports
+__pycache__
+chroma
+env_whisper
+.env
+app.log
+extra_csvs
+combine_csv.py
+CSVs
