@@ -2,7 +2,7 @@ reports
 __pycache__
 chroma
 env_whisper
-.env
+# .env
 app.log
 extra_csvs
 combine_csv.py

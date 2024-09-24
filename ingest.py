@@ -7,6 +7,15 @@ import os
 import tiktoken
 import logging
 import requests
+from config import (
+    dotenv_path,
+    csv_file_to_ingest,
+    embedding_model,
+    vectorstore_path,
+    collection_name,
+    batch_size
+)
+
 
 # Configure logging to write to a file and set level to INFO
 logging.basicConfig(
@@ -25,7 +34,7 @@ logging.getLogger('').addHandler(console)
 
 # Load environment variables from .env file
 try:
-    load_dotenv(dotenv_path=".env", override=True)
+    load_dotenv(dotenv_path=dotenv_path, override=True)
     logging.info("Environment variables loaded successfully.")
 except Exception as e:
     logging.error("Failed to load environment variables.", exc_info=True)
@@ -46,7 +55,7 @@ ids_b_m = []
 
 # Read CSV file containing the hadith data
 try:
-    with open('The_Eight_Books.csv', encoding='utf-8-sig') as file:
+    with open(csv_file_to_ingest, encoding='utf-8-sig') as file:
         logging.info("CSV file opened successfully.")
         lines = csv.reader(file)
         id = 1
@@ -73,7 +82,7 @@ except Exception as e:
 
 # Initialize tokenizer for the embedding model
 try:
-    tokenizer = tiktoken.encoding_for_model("text-embedding-3-large")
+    tokenizer = tiktoken.encoding_for_model(embedding_model)
     logging.info("Tokenizer initialized successfully.")
 except Exception as e:
     logging.error("Failed to initialize tokenizer.", exc_info=True)
@@ -90,7 +99,7 @@ except Exception as e:
 
 # Initialize a persistent Chromadb client
 try:
-    vectorstore_client = chromadb.PersistentClient(path="chroma")
+    vectorstore_client = chromadb.PersistentClient(path=vectorstore_path)
     logging.info("Chromadb client initialized successfully.")
 except Exception as e:
     logging.error("Failed to initialize Chromadb client.", exc_info=True)
@@ -109,7 +118,7 @@ except Exception as e:
 try:
     openai_ef = embedding_functions.OpenAIEmbeddingFunction(
         api_key=OpenAI_TOKEN,
-        model_name='text-embedding-3-large'
+        model_name=embedding_model
     )
     logging.info("OpenAI embedding function initialized successfully.")
 except Exception as e:
@@ -118,7 +127,7 @@ except Exception as e:
 
 # Create or get an existing collection for storing the hadith data
 try:
-    collection_name="eight_hadith_books_large"
+    
     collection = vectorstore_client.get_or_create_collection(
         name=collection_name,
         embedding_function=openai_ef,
@@ -132,8 +141,7 @@ except Exception as e:
     logging.error("Failed to create or retrieve Chromadb collection.", exc_info=True)
     raise e
 
-# Define batch size and calculate the number of loops required
-batch_size = 150
+# Calculate the number of loops required
 loops = math.ceil(len(documents_b_m) / batch_size)
 logging.info(f"Data will be uploaded in {loops} batches of {batch_size} documents each.")
 

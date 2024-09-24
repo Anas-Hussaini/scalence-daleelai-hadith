@@ -1,0 +1,11 @@
+dotenv_path = '.env'
+csv_file_to_ingest = 'The_Eight_Books.csv'
+embedding_model = "text-embedding-3-large"
+vectorstore_path = "chroma"
+collection_name="eight_hadith_books_large"
+batch_size = 150
+output_dir='audios'
+username = "insight_inn"
+transcription_model = "whisper-1"
+transcription_language="en",
+llm_model = "gpt-4o-mini"
