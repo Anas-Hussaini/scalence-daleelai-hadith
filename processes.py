@@ -101,68 +101,78 @@ def download_instagram_video_mp3(post_url, output_dir=output_dir):
         logging.error(f'An error occurred in downloading or converting the video: {e}', exc_info=True)
     
 def transcript(audio_filename:str):
-    
-    # Initialize OpenAI client
-    client = OpenAI(api_key=openai_token)
-    logging.info("OpenAI client initialized successfully.")
+    try:
+        # Initialize OpenAI client
+        client = OpenAI(api_key=openai_token)
+        logging.info("OpenAI client initialized successfully.")
 
-    # Open the audio file
-    audio_path = f"{output_dir}/{audio_filename}.mp3"
-    with open(audio_path, "rb") as audio_file:
-        logging.info(f"Opened audio file: {audio_path}")
+        # Open the audio file
+        audio_path = f"{output_dir}/{audio_filename}.mp3"
+        with open(audio_path, "rb") as audio_file:
+            logging.info(f"Opened audio file: {audio_path}")
 
-        # Transcribe the audio file using Whisper
-        repsonse = client.audio.transcriptions.create(
-            model=transcription_model,
-            file=audio_file,
-            language=transcription_language
-        )
-        
-        logging.info("Transcription completed successfully.")
-        transcription = repsonse.text 
-    return transcription
+            # Transcribe the audio file using Whisper
+            repsonse = client.audio.transcriptions.create(
+                model=transcription_model,
+                file=audio_file,
+                language=transcription_language
+            )
+            
+            logging.info("Transcription completed successfully.")
+            transcription = repsonse.text 
+        return transcription
+    except Exception as e:
+        logging.error(f"Error during transcription: {e}", exc_info=True)
 
 def llm_layer(transcription):
-    # Initialize OpenAI client
-    client = OpenAI(api_key=openai_token)
-    logging.info("OpenAI client initialized successfully.")
-    
-    openai_response = client.chat.completions.create(
-        model=llm_model,
-        messages=[
-            {"role": "system", "content": "You are an assistant tasked with extracting only the hadith content in english from the text provided by the user. Ignore any additional commentary, or unrelated text. Provide only the extracted hadith."},
-            {"role": "user", "content": transcription}
-        ]
-        )
-
-    hadith_crux =  openai_response.choices[0].message.content
+    try:
+        # Initialize OpenAI client
+        client = OpenAI(api_key=openai_token)
+        logging.info("OpenAI client initialized successfully.")
         
-    return hadith_crux
+        openai_response = client.chat.completions.create(
+            model=llm_model,
+            messages=[
+                {"role": "system", "content": "You are an assistant tasked with extracting only the hadith content in english from the text provided by the user. Ignore any additional commentary, or unrelated text. Provide only the extracted hadith."},
+                {"role": "user", "content": transcription}
+            ]
+            )
+
+        hadith_crux =  openai_response.choices[0].message.content
+            
+        return hadith_crux
+    
+    except Exception as e:
+        logging.error(f"Error in LLM layer processing: {e}", exc_info=True)
 
 def query(hadith_crux:str):
+    try:
+        # Initialize ChromaDB client
+        vectorstore_client = chromadb.PersistentClient(path=vectorstore_path)
+        logging.info("ChromaDB client initialized successfully.")
 
-    # Initialize ChromaDB client
-    vectorstore_client = chromadb.PersistentClient(path=vectorstore_path)
-    logging.info("ChromaDB client initialized successfully.")
+        # Prepare the embedding function
+        openai_ef = embedding_functions.OpenAIEmbeddingFunction(
+            api_key=openai_token,
+            model_name=embedding_model
+        )
+        logging.info("Embedding function prepared successfully.")
 
-    # Prepare the embedding function
-    openai_ef = embedding_functions.OpenAIEmbeddingFunction(
-        api_key=openai_token,
-        model_name=embedding_model
-    )
-    logging.info("Embedding function prepared successfully.")
-
-    # Set up the collection in ChromaDB
-    collection = vectorstore_client.get_collection(
-        name=collection_name,
-        embedding_function=openai_ef
-    )
-    logging.info(f"ChromaDB collection '{collection_name}' set up successfully.")
+        # Set up the collection in ChromaDB
+        collection = vectorstore_client.get_collection(
+            name=collection_name,
+            embedding_function=openai_ef
+        )
+        logging.info(f"ChromaDB collection '{collection_name}' set up successfully.")
+        
+        retrieved_docs_llm_layer = collection.query(query_texts=hadith_crux, n_results=3)
+        logging.info("Query with llm layer executed successfully.")
+        
+        return retrieved_docs_llm_layer
     
-    retrieved_docs_llm_layer = collection.query(query_texts=hadith_crux, n_results=3)
-    logging.info("Query with llm layer executed successfully.")
-    
-    return retrieved_docs_llm_layer
+    except Exception as e:
+        logging.error(f"Error querying ChromaDB: {e}", exc_info=True)
+        raise
 
 
 def output_parse(retrieved_docs_llm_layer,transcription,hadith_crux):
