@@ -11,5 +11,6 @@ audios
 reports_without_extraction
 reports_test
 reports_small_model
-
+main.py
+functions.py
 
