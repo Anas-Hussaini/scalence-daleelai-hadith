@@ -8,3 +8,8 @@ extra_csvs
 combine_csv.py
 CSVs
 audios
+reports_without_extraction
+reports_test
+reports_small_model
+
+

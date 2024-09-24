@@ -3,13 +3,13 @@ import logging
 from instaloader import Instaloader, Post
 import requests
 from pydub import AudioSegment
-import os
-import logging
 import json
 from openai import OpenAI
 from dotenv import load_dotenv
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
+import json
+import docx
 
 # Configure logging
 logging.basicConfig(
@@ -85,24 +85,14 @@ def download_instagram_video_mp3(post_url, output_dir='audios'):
     except Exception as e:
         logging.error(f'An error occurred in downloading or converting the video: {e}', exc_info=True)
 
-# # Example usage
-# instagram_post_url = 'https://www.instagram.com/reel/C_Qd8Tatpj_/?utm_source=ig_web_copy_link'
-# output_directory = "insta_video_data"
 
-# download_instagram_video_requests(instagram_post_url, output_directory)
-
-
-
-# Load environment variables
-load_dotenv(dotenv_path=".env", override=True)
-
-# Configure logging to save all logs in one file
-logging.basicConfig(
-    level=logging.INFO,  # Set the logging level
-    format='%(asctime)s - %(levelname)s - %(message)s',  # Set the log format
-    filename='app.log',  # Log file name
-    filemode='a'  # 'w' for overwrite, 'a' for append
-)
+# # Configure logging to save all logs in one file
+# logging.basicConfig(
+#     level=logging.INFO,  # Set the logging level
+#     format='%(asctime)s - %(levelname)s - %(message)s',  # Set the log format
+#     filename='app.log',  # Log file name
+#     filemode='a'  # 'w' for overwrite, 'a' for append
+# )
 
 def process_audio(
         openai_token,
@@ -138,9 +128,19 @@ def process_audio(
                 file=audio_file,
                 language="en"
             )
-            hadith = transcription.text
+            
             logging.info("Transcription completed successfully.")
 
+        openai_response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are an assistant tasked with extracting only the hadith content in english from the text provided by the user. Ignore any additional commentary, or unrelated text. Provide only the extracted hadith."},
+            {"role": "user", "content": transcription.text}
+        ]
+        )
+
+        hadith_crux =  openai_response.choices[0].message.content
+                
         # Initialize ChromaDB client
         vectorstore_client = chromadb.PersistentClient(path=chromadb_path)
         logging.info("ChromaDB client initialized successfully.")
@@ -148,7 +148,7 @@ def process_audio(
         # Prepare the embedding function
         openai_ef = embedding_functions.OpenAIEmbeddingFunction(
             api_key=openai_token,
-            model_name="text-embedding-3-small"
+            model_name="text-embedding-3-large"
         )
         logging.info("Embedding function prepared successfully.")
 
@@ -160,41 +160,110 @@ def process_audio(
         logging.info(f"ChromaDB collection '{collection_name}' set up successfully.")
 
         # Query the collection with the transcribed text
-        retrieved_docs = collection.query(query_texts=hadith, n_results=3)
-        logging.info("Query executed successfully.")
+        
+        retrieved_docs = collection.query(query_texts=transcription.text, n_results=3)
+        logging.info("Query without llm layer executed successfully.")
+        
+        retrieved_docs_llm_layer = collection.query(query_texts=hadith_crux, n_results=3)
+        logging.info("Query with llm layer executed successfully.")
 
         # Extract the results
         data = retrieved_docs
         metadatas = data['metadatas'][0]
         distances = data['distances'][0]
         documents = data['documents'][0]
+        
+        data_llm_layer = retrieved_docs_llm_layer
+        metadatas_llm_layer = data_llm_layer['metadatas'][0]
+        distances_llm_layer = data_llm_layer['distances'][0]
+        documents_llm_layer = data_llm_layer['documents'][0]
 
         # Ensure the output directory exists
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
             logging.info(f"Created directory: {output_dir}")
 
-        # Save the results to a text file
-        output_file_path = f"{output_dir}/results_{audio_filename}.txt"
-        with open(output_file_path, "w", encoding='utf-8-sig') as file:
-            file.write("Transcription:\n")
-            file.write(f"{hadith}\n")
-            file.write("\n" + "-"*50 + "\n\n")
-            for i in range(len(documents)):
-                file.write(f"Document {i+1}:\n")
-                file.write(f"{documents[i]}\n")
-                file.write(f"Metadata: {json.dumps(metadatas[i], indent=4)}\n")
-                file.write(f"Distance: {distances[i]}\n")
-                file.write("\n" + "-"*50 + "\n\n")
+        # # Save the results to a text file
+        # output_file_path = f"{output_dir}/results_{audio_filename}.txt"
+        # with open(output_file_path, "w", encoding='utf-8-sig') as file:
+        #     file.write("Transcription:\n")
+        #     file.write(f"{transcription.text}\n")
+        #     file.write("\n" + "-"*50 + "\n\n")
+        #     file.write("Hadith Extraction:\n")
+        #     file.write(f"{hadith_crux}\n")
+        #     file.write("\n" + "-"*50 + "\n\n")
+        #     for i in range(len(documents)):
+        #         file.write(f"Document {i+1}:\n")
+        #         file.write(f"{documents[i]}\n")
+        #         file.write(f"Metadata: {json.dumps(metadatas[i], indent=4)}\n")
+        #         file.write(f"Distance: {distances[i]}\n")
+        #         file.write("\n" + "-"*50 + "\n\n")
+        # logging.info(f"Results saved successfully to {output_file_path}.")
+
+        # Save the results to a Word file
+        output_file_path = f"{output_dir}/results_{audio_filename}.docx"
+
+        # Create a new Document object
+        doc = docx.Document()
+
+        # Add transcription section
+        doc.add_heading('Transcription:', level=1)
+        doc.add_paragraph(transcription.text)
+
+        # Add a separator
+        doc.add_paragraph('-' * 50)
+
+        # Add Hadith Extraction section
+        doc.add_heading('Hadith Extraction through llm layer:', level=1)
+        doc.add_paragraph(hadith_crux)
+
+        doc.add_paragraph('-' * 50)
+
+        doc.add_heading('Results without LLM Layer:', level=1)
+        
+        # Add documents with metadata and distance
+        for i in range(len(documents)):
+            doc.add_heading(f'Document {i + 1}:', level=2)
+            doc.add_paragraph(documents[i])
+            
+            # Add Metadata
+            doc.add_heading('Metadata:', level=3)
+            doc.add_paragraph(json.dumps(metadatas[i], indent=4))
+            
+            # Add Distance
+            doc.add_heading('Distance:', level=3)
+            doc.add_paragraph(str(distances[i]))
+            
+            # Add a separator for each document
+            doc.add_paragraph('-' * 50)
+            
+        # Add another separator
+        doc.add_paragraph('-' * 50)
+
+        doc.add_heading('Results with LLM Layer:', level=1)
+        
+        # Add documents with metadata and distance
+        for i in range(len(documents_llm_layer)):
+            doc.add_heading(f'Document {i + 1}:', level=2)
+            doc.add_paragraph(documents_llm_layer[i])
+            
+            # Add Metadata
+            doc.add_heading('Metadata:', level=3)
+            doc.add_paragraph(json.dumps(metadatas_llm_layer[i], indent=4))
+            
+            # Add Distance
+            doc.add_heading('Distance:', level=3)
+            doc.add_paragraph(str(distances_llm_layer[i]))
+            
+            # Add a separator for each document
+            doc.add_paragraph('-' * 50)
+
+        # Save the Word document
+        doc.save(output_file_path)
+
         logging.info(f"Results saved successfully to {output_file_path}.")
 
+        
     except Exception as e:
         logging.error(f"An error occurred: {e}", exc_info=True)
 
-# # Example usage
-# process_audio(
-#     openai_token=os.environ["OpenAI_TOKEN"],
-#     audio_filename="C_XxasBNdt7",
-#     chromadb_path="chroma",
-#     collection_name="bukhari_muslim_collection"
-# )

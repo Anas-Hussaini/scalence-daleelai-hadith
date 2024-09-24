@@ -73,7 +73,7 @@ except Exception as e:
 
 # Initialize tokenizer for the embedding model
 try:
-    tokenizer = tiktoken.encoding_for_model("text-embedding-3-small")
+    tokenizer = tiktoken.encoding_for_model("text-embedding-3-large")
     logging.info("Tokenizer initialized successfully.")
 except Exception as e:
     logging.error("Failed to initialize tokenizer.", exc_info=True)
@@ -109,7 +109,7 @@ except Exception as e:
 try:
     openai_ef = embedding_functions.OpenAIEmbeddingFunction(
         api_key=OpenAI_TOKEN,
-        model_name='text-embedding-3-small'
+        model_name='text-embedding-3-large'
     )
     logging.info("OpenAI embedding function initialized successfully.")
 except Exception as e:
@@ -118,7 +118,7 @@ except Exception as e:
 
 # Create or get an existing collection for storing the hadith data
 try:
-    collection_name="eight_hadith_books"
+    collection_name="eight_hadith_books_large"
     collection = vectorstore_client.get_or_create_collection(
         name=collection_name,
         embedding_function=openai_ef,
@@ -155,94 +155,3 @@ for i in range(0, loops):
         raise e
 
 logging.info("Ingestion completed successfully.")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# print(len(documents_b_m),len(metadatas_b_m),len(ids_b_m))
-# len(documents_b_m[13600:13750])
-# 274*50
-
-# # Get indices of blank values (None, empty strings, whitespace-only strings)
-# blank_indices = [
-#     index for index, item in enumerate(documents_b_m)
-#     if item is None or (isinstance(item, str) and item.strip() == "")
-# ]
-
-# print(blank_indices)  # Output: [1, 3, 4]
-
-# indices = [533, 696, 697, 834, 1484, 1651, 1656, 1659, 1662, 1666, 1831, 1835]
-
-
-# # Using list comprehension
-# selected_elements = [metadatas_b_m[i] for i in indices]
-# # metadatas_b_m[23280]
-
-# hadith_533="And he narrated to me from Malik, from Yahya ibn Said, that the Messenger of Allah (peace be upon him) was shrouded in three pure white garments."
-# hadith_696="Malik said, 'I have heard the same from Sulayman ibn Yasar.' Malik continued, 'Whoever dies with an unfulfilled vow to free a slave, fast, give charity, or offer a sacrificial animal, and has bequeathed that it should be fulfilled from his estate, then the charity or the sacrificial animal is to be taken from one-third of his estate. This is given preference over other bequests, except those of a similar nature, because what is required by a vow is not like voluntary donations. Such requirements are settled from one-third of the estate specifically, rather than from the entirety of it. This is because if it were allowed to be fulfilled from the entire estate, the deceased might delay fulfilling what was obligatory upon him until death approached, and then bequeath such matters that no one would claim, as with debts. If this were permissible, he might postpone these obligations until death, bequeath them, and they might consume the entirety of his estate. Such a practice is not allowed.'"
-# hadith_697="Yahya related to me from Malik that he had heard that Abdullah ibn Umar used to be asked, 'Can someone fast on behalf of someone else, or perform prayer on behalf of someone else?' and he would reply, 'No one can fast on behalf of someone else, nor can anyone pray on behalf of someone else.'"
-# hadith_834="It was narrated to me from Malik that he had heard that the Messenger of Allah (peace be upon him) and his companions were in a state of ihram at Hudaybiyyah. They slaughtered their sacrificial animals, shaved their heads, and removed all restrictions before performing the Tawaf of the Kaaba and before the sacrificial animals reached their destination. It is not known that the Messenger of Allah (peace be upon him) instructed any of his companions or those with him to complete any specific acts or to return to any previous state."
-# hadith_1484="""Malik related to me that he heard Ibn Shihab being asked about that and he said the like of what Sulayman ibn Yasar said. Malik said, "That is what is done in our community. It is by the word of Allah, the Blessed, the Exalted, 'And those who accuse women who are muhsan, and then do not bring four witnesses, flog them with eighty lashes, and do not accept any testimony of theirs ever. They indeed are evil-doers, save those who turn in tawba after that and make amends. Allah is Forgiving, Merciful.' " (Sura 24 ayat 4). Malik said, 'The matter on which there is no disagreement among us is that if someone is flogged for the legal punishment and then repents and reforms, his testimony is acceptable. This is the most preferred opinion to me regarding this issue.'"""
-# hadith_1651="The Chapter on the Legal Punishment for Alcohol"
-# hadith_1656="The Chapter on What is Prohibited to Be Used for Brewing"
-# hadith_1659="The Chapter on What is Disliked to Brew All at Once"
-# hadith_1662="The Chapter on the Prohibition of Alcohol"
-# hadith_1666="The Chapter on the Comprehensive Prohibition of Alcohol"
-# hadith_1831="""Yahya related to me from Malik from Yahya ibn Said that Umar ibn al-Khattab said, "Beware of meat. It has addictiveness like the addictiveness of wine."""
-# hadith_1835="The Chapter on What Has Been Reported Regarding Removing Amulets and Bells from the Neck"
-
-# # Indices and their new values
-# indices_to_replace = [533, 696, 697, 834, 1484, 1651, 1656, 1659, 1662, 1666, 1831, 1835]
-# new_values = [hadith_533,hadith_696,hadith_697,hadith_834,hadith_1484,hadith_1651,hadith_1656,hadith_1659,hadith_1662,hadith_1666,hadith_1831,hadith_1835]
-
-# # Replace values
-# for index, new_value in zip(indices_to_replace, new_values):
-#     if 0 <= index < len(documents_b_m):  # Ensure index is within bounds
-#         documents_b_m[index] = new_value
-
-# print(documents_b_m)  # Output: [10, 99, 30, 88, 50]
-
-# single_line = hadith_23280.replace("\n", " ")
-
-# print(single_line)
-
-# import pandas as pd
-# df = pd.read_csv('The_Six_Books.csv')
-# df.iloc[23280]
-# # Modify a specific cell
-# df.at[23280, 'Hadith Text'] = single_line
-
-# # Save the modified DataFrame back to the CSV file
-# df.to_csv('The_Six_Books_updated.csv', index=False, encoding='utf-8-sig')
-
-# import pandas as pd
-
-# # Read the CSV file into a DataFrame
-# df = pd.read_csv('CSVs/malikDotCom.csv')
-
-# # Define the new list of values
-# new_list = documents_b_m  # Make sure this list has the same number of elements as the number of rows in the DataFrame
-
-# # Replace the column with the new list
-# df['Hadith Text'] = new_list  # Replace 'column_name' with the name of the column you want to replace
-
-# # Save the updated DataFrame back to a CSV file
-# df.to_csv('CSVs/malikDotCom_updated.csv', index=False)
